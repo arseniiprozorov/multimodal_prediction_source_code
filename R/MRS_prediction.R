@@ -112,6 +112,11 @@ names(MRS_prediction_long)
 MRS_prediction_long$arsenii_hippocampus_avg_act <- winsorize_iqr(MRS_prediction_long$arsenii_hippocampus_avg_act, 1.5)
 MRS_prediction_long$arsenii_parietal_sup_l_act <- winsorize_iqr(MRS_prediction_long$arsenii_parietal_sup_l_act, 1.5)
 
+MRS_prediction_long$hippocampus_avg_raw <- (MRS_prediction_long$activation_hippocampus_l + MRS_prediction_long$activation_hippocampus_r) / 2
+
+
+
+
 
 # Convert to factor longitudinal
 MRS_prediction_long$diagnostic_nick <- as.factor(MRS_prediction_long$diagnostic_nick)
@@ -357,7 +362,7 @@ q_hip <- quantile(MRS_prediction_long$arsenii_hippocampus_avg_act, probs = c(0, 
 MRS_prediction_long$hipp_act_tert <- cut(MRS_prediction_long$arsenii_hippocampus_avg_act, breaks = q_hip, 
                                          labels = c("Low", "Medium", "High"), include.lowest = TRUE)
 
-# Run models
+# Run 
 #  Plasma p-Tau217 Tertiles
 mod_ptau_tert <- lmer(moca ~ years_from_baseline * ptau217_tert + age_difference + sexe + 
                         diagnostic_nick + education + initiale_age + (1 | pscid), data = MRS_prediction_long)
@@ -476,20 +481,6 @@ base_model_act <- lmer(moca ~ years_from_baseline * (plasma_ptau217_z + cortical
 summary(base_model_act)
 anova(base_model, base_model_act)
 
-##  step 3  Full model
-full_lmm_model <- lmer(moca ~ years_from_baseline * (plasma_ptau217_z + cortical_thickness_adsignature_dickson_z + 
-      m_m_acc_z + m_m_precuneus_z + arsenii_hippocampus_avg_act) + 
-    age_difference + sexe + diagnostic_nick + education + initiale_age + 
-    (1 | pscid),data = MRS_core_long, REML = FALSE)
-summary(full_lmm_model)
-anova(base_model, full_lmm_model)
-
-## Step 4 backward elimination
-step_lmm_res <- lmerTest::step(full_lmm_model, 
-  reduce.fixed = TRUE, reduce.random = FALSE, alpha.remove = 0.05)
-print(step_lmm_res)
-final_lmm_model <- get_model(step_lmm_res)
-summary(final_lmm_model)
 
 
 #sink()
@@ -573,11 +564,12 @@ overall_m_sig(model_func_hip)
 
 
 
+names(MRS_prediction)
 # Habib: decliners defined based on flipping to delciner and staying decliner
 
 
 # plasma_ptau217 
-model_glu_ptau217 <- glm(sustained_decliner ~ plasma_ptau217_z + age_difference  , data = MRS_prediction, family = "binomial")
+model_glu_ptau217 <- glm(sustained_decliner ~ plasma_ptau217_z + age_difference, data = MRS_prediction, family = "binomial")
 summary(model_glu_ptau217)
 overall_m_sig(model_glu_ptau217)
 
@@ -727,30 +719,6 @@ roc.test(roc_null, roc_null_act, method = "bootstrap", paired = TRUE, boot.n = 1
 coords(roc_null_act, "best", ret=c("threshold", "specificity", "sensitivity"), best.method="youden")
 ci.coords(roc_null_act, x = 0.174571, ret = c("sensitivity", "specificity"), 
           method = "bootstrap", boot.n = 1000)
-
-
-
-# Step 3. Full model
-model_glm_full <- glm(sustained_decliner ~ plasma_ptau217_z + cortical_thickness_adsignature_dickson_z + m_m_acc_z + m_m_precuneus_z + arsenii_hippocampus_avg_act,
-  data = MRS_step, 
-  family = "binomial")
-summary(model_glm_full)
-overall_m_sig(model_glm_full)
-
-
-roc_full <- roc(model_glm_full$y, fitted(model_glm_full))
-auc(roc_full)
-
-ci_roc_full  <- ci.auc(roc_full, method = "bootstrap", boot.n = 1000)
-print(ci_roc_full)
-
-anova(model_glm_null, model_glm_full, test = "Chisq")
-roc.test(roc_null, roc_full, method = "bootstrap", paired = TRUE, boot.n = 1000)
-
-coords(roc_full, "best", ret=c("threshold", "specificity", "sensitivity"), best.method="youden")
-ci.coords(roc_full, x = 0.3600494, ret = c("sensitivity", "specificity"), 
-          method = "bootstrap", boot.n = 1000)
-
 
 
 
